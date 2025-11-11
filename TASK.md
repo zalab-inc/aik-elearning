@@ -4,3 +4,6 @@ src/app/auth/login/page.tsx
 src/app/auth/login/login-form.tsx
 src/app/auth/login/login-actions.ts
 src/app/auth/login/login-schemas.ts
+
+# Task 2
+create use model in prisma model
