@@ -20,6 +20,12 @@ pnpm start
 
 # Run linting
 pnpm lint
+
+# Database commands
+pnpm db:generate    # Generate Prisma Client
+pnpm db:push        # Push schema changes to database (development)
+pnpm db:migrate     # Create and run migrations
+pnpm db:studio      # Open Prisma Studio GUI
 ```
 
 Note: This project uses `pnpm` as the package manager (evidenced by `pnpm-lock.yaml`).
@@ -29,6 +35,7 @@ Note: This project uses `pnpm` as the package manager (evidenced by `pnpm-lock.y
 ### Tech Stack
 - **Framework**: Next.js 16.0.1 with App Router
 - **React**: v19.2.0 with React Compiler enabled (configured in `next.config.ts`)
+- **Database**: Prisma 6.19.0 with MySQL
 - **Styling**: Tailwind CSS v4 with custom theme configuration
 - **Component Library**: shadcn/ui (New York style variant with lucide-react icons)
 - **TypeScript**: Strict mode enabled
@@ -38,12 +45,27 @@ Note: This project uses `pnpm` as the package manager (evidenced by `pnpm-lock.y
 ```
 src/
 ├── app/              # Next.js App Router pages and layouts
+│   ├── auth/         # Authentication routes
+│   │   └── login/    # Login feature (page, form, actions, schemas)
 │   ├── layout.tsx    # Root layout with Geist fonts
 │   ├── page.tsx      # Home page
 │   └── globals.css   # Global styles with Tailwind v4 and theme variables
-└── lib/
-    └── utils.ts      # Utility functions (cn helper for className merging)
+├── lib/
+│   ├── prisma.ts     # Prisma Client singleton instance
+│   └── utils.ts      # Utility functions (cn helper for className merging)
+└── generated/
+    └── prisma/       # Generated Prisma Client (auto-generated, do not edit)
+
+prisma/
+├── schema.prisma     # Database schema definition
+└── migrations/       # Database migrations (created by `db:migrate`)
 ```
+
+**Feature Organization**: Authentication features follow a modular pattern where each feature directory contains:
+- `page.tsx` - Next.js page component
+- `*-form.tsx` - Client-side form components (marked with "use client")
+- `*-actions.ts` - Server actions (marked with "use server")
+- `*-schemas.ts` - Validation schemas
 
 ### Path Aliases
 Configured in `tsconfig.json`:
@@ -85,10 +107,39 @@ shadcn/ui component aliases (configured in `components.json`):
 - Uses Geist Sans and Geist Mono from `next/font/google`
 - Font variables: `--font-geist-sans` and `--font-geist-mono`
 
+**Prisma Configuration**:
+- Database: MySQL at `localhost:3306/aik-elearning` (credentials: root/root)
+- Prisma Client generated to: `src/generated/prisma/`
+- Schema location: `prisma/schema.prisma`
+- Config file: `prisma.config.ts` (loads environment variables via dotenv)
+- Environment variables: Defined in `.env` file (gitignored)
+
 ### Development Patterns
 
-When adding shadcn/ui components, they should be placed in `src/components/ui/` and follow the configured aliases.
+**UI Components**:
+- shadcn/ui components should be placed in `src/components/ui/`
+- Use the `cn()` utility function from `src/lib/utils.ts` for merging Tailwind classes
+- Dark mode is implemented using CSS class-based approach (`.dark` class)
 
-The `cn()` utility function in `src/lib/utils.ts` should be used for merging Tailwind classes and handling conditional styling.
+**Database Access**:
+- Always import Prisma Client from `@/lib/prisma` (singleton instance)
+- Use Prisma Client in Server Components and Server Actions only
+- Never import Prisma Client in Client Components (marked with "use client")
+- Run `pnpm db:generate` after modifying `prisma/schema.prisma`
+- Use `pnpm db:push` for schema changes during development
+- Use `pnpm db:migrate` to create migration files for production
 
-Dark mode is implemented using CSS class-based approach (`.dark` class) with comprehensive theme variable support.
+**Server Actions Pattern**:
+```typescript
+// Example: src/app/auth/login/login-actions.ts
+"use server"
+
+import prisma from "@/lib/prisma"
+
+export async function loginAction(formData: FormData) {
+  const user = await prisma.user.findUnique({
+    where: { email: formData.get("email") as string }
+  })
+  // ... authentication logic
+}
+```
